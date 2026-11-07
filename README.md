@@ -139,7 +139,7 @@ npm run dev
 | 用户 | `POST /api/auth/register`、`POST /api/auth/login`、`GET /api/users/{id}` |
 | 需求 | `POST /api/demands`、`GET /api/demands`、`GET /api/demands/mine`、`POST /api/demands/{id}/deduct` |
 | 订单 | `POST /api/orders/grab`、`GET /api/orders/mine`、`GET /api/orders/by-demand/{id}`、`POST /api/orders/{id}/cancel` |
-| 支付 | `POST /api/payments/{orderId}/pay-deposit`、`POST /api/payments/{orderId}/refund` |
+| 支付 | `POST /api/payments/{orderId}/pay-deposit`、`POST /api/payments/{orderId}/refund`、`GET /api/payments/by-order/{orderId}`、`GET /api/payments` |
 
 共 27 个接口（含 4 个演示/诊断接口），详见 `项目前置材料` 中的《05-API与数据库设计文档》。
 
@@ -191,6 +191,7 @@ reapnow-cloud/
 ├── reapnow-order-service/   订单服务 :8083
 ├── reapnow-payment-service/ 支付服务 :8084
 ├── frontend/                前端 :5174
+│   └── src/views/            Hall / Publish / MyOrders / MyDemands / Payments / Login
 ├── start-all.ps1            拉起 4 个服务 + 网关
 ├── env.local.example.ps1    环境变量模板（复制为 env.local.ps1 后填密码）
 └── .gitignore

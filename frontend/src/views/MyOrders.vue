@@ -2,11 +2,39 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import api from '../api'
+import api, { paymentApi } from '../api'
 
 const router = useRouter()
 const loading = ref(false)
 const list = ref([])
+
+// ---- 定金流水查看 ----
+const payDrawer = ref(false)
+const payLoading = ref(false)
+const payRecords = ref([])
+const payTitle = ref('')
+
+const paymentStatus = {
+  PENDING: { text: '待支付', type: 'info' },
+  SUCCESS: { text: '支付成功', type: 'success' },
+  FAILED: { text: '支付失败', type: 'danger' },
+  REFUNDED: { text: '已退款', type: 'warning' }
+}
+
+/** 查某个订单的定金流水（C04-3） */
+async function viewPayments(row) {
+  payTitle.value = `订单 ${row.orderNo}`
+  payRecords.value = []
+  payDrawer.value = true
+  payLoading.value = true
+  try {
+    payRecords.value = await paymentApi.byOrder(row.id)
+  } catch (e) {
+    ElMessage.error(e.message)
+  } finally {
+    payLoading.value = false
+  }
+}
 
 const statusMap = {
   PENDING_DEPOSIT: { text: '待付定金', type: 'warning' },
@@ -78,15 +106,49 @@ async function cancel(row) {
           <el-tag :type="statusMap[row.status]?.type" size="small">{{ statusMap[row.status]?.text }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="160">
+      <el-table-column label="操作" width="210">
         <template #default="{ row }">
           <el-button v-if="row.status === 'PENDING_DEPOSIT'" link type="primary" @click="pay(row)">支付定金</el-button>
           <el-button v-if="row.status === 'PENDING_DEPOSIT' || row.status === 'DEPOSIT_PAID'"
             link type="danger" @click="cancel(row)">取消</el-button>
+          <el-button link type="info" @click="viewPayments(row)">定金流水</el-button>
         </template>
       </el-table-column>
     </el-table>
     <el-empty v-if="!loading && list.length === 0" description="还没抢过单，去抢单大厅看看" />
+
+    <!-- 定金流水抽屉 -->
+    <el-drawer v-model="payDrawer" :title="'定金流水：' + payTitle" size="780px">
+      <div v-loading="payLoading">
+        <el-alert
+          v-if="!payLoading && payRecords.length === 0"
+          type="info" :closable="false" show-icon
+          title="还没有支付记录"
+          description="抢单后需要支付 30% 定金才能锁定档期" />
+        <el-table v-else :data="payRecords" stripe>
+          <el-table-column prop="paymentNo" label="流水号" width="200" />
+          <el-table-column label="金额" width="100">
+            <template #default="{ row }"><span class="dep">¥{{ row.amount }}</span></template>
+          </el-table-column>
+          <el-table-column label="类型" width="80">
+            <template #default="{ row }">{{ row.type === 'DEPOSIT' ? '定金' : row.type }}</template>
+          </el-table-column>
+          <el-table-column prop="channel" label="渠道" width="90" />
+          <el-table-column label="状态" width="105">
+            <template #default="{ row }">
+              <el-tag :type="paymentStatus[row.status]?.type" size="small">
+                {{ paymentStatus[row.status]?.text || row.status }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="支付时间" min-width="160">
+            <template #default="{ row }">
+              {{ (row.paidAt || '').replace('T', ' ').slice(0, 19) || '—' }}
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+    </el-drawer>
   </el-card>
 </template>
 

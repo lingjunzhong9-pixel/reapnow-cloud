@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import api from '../api'
+import api, { paymentApi } from '../api'
 
 const router = useRouter()
 const loading = ref(false)
@@ -10,6 +10,33 @@ const list = ref([])
 const drawer = ref(false)
 const grabbers = ref([])
 const currentPlot = ref('')
+
+// ---- 某个订单的定金流水 ----
+const payDialog = ref(false)
+const payLoading = ref(false)
+const payRecords = ref([])
+const payTitle = ref('')
+
+const paymentStatus = {
+  PENDING: { text: '待支付', type: 'info' },
+  SUCCESS: { text: '支付成功', type: 'success' },
+  FAILED: { text: '支付失败', type: 'danger' },
+  REFUNDED: { text: '已退款', type: 'warning' }
+}
+
+async function viewOrderPayments(row) {
+  payTitle.value = `订单 ${row.orderNo} · 机手 ${row.ownerName}`
+  payRecords.value = []
+  payDialog.value = true
+  payLoading.value = true
+  try {
+    payRecords.value = await paymentApi.byOrder(row.id)
+  } catch (e) {
+    ElMessage.error(e.message)
+  } finally {
+    payLoading.value = false
+  }
+}
 
 const statusMap = {
   OPEN: { text: '可抢单', type: 'success' },
@@ -99,9 +126,43 @@ async function viewGrabbers(row) {
         <el-table-column label="状态" width="130">
           <template #default="{ row }">{{ orderStatus[row.status] || row.status }}</template>
         </el-table-column>
+        <el-table-column label="操作" width="105">
+          <template #default="{ row }">
+            <el-button link type="primary" @click="viewOrderPayments(row)">定金流水</el-button>
+          </template>
+        </el-table-column>
       </el-table>
       <el-empty v-if="grabbers.length === 0" description="还没有机手接单" />
     </el-drawer>
+
+    <!-- 定金流水弹窗（从「谁抢了」抽屉里点进来） -->
+    <el-dialog v-model="payDialog" :title="'定金流水：' + payTitle" width="760px" append-to-body>
+      <div v-loading="payLoading">
+        <el-alert
+          v-if="!payLoading && payRecords.length === 0"
+          type="warning" :closable="false" show-icon
+          title="这笔定金还没有支付"
+          description="机手抢单后需要支付 30% 定金才算锁定履约" />
+        <el-table v-else :data="payRecords" stripe>
+          <el-table-column prop="paymentNo" label="流水号" width="200" />
+          <el-table-column label="金额" width="100">
+            <template #default="{ row }"><span class="dep">¥{{ row.amount }}</span></template>
+          </el-table-column>
+          <el-table-column label="状态" width="105">
+            <template #default="{ row }">
+              <el-tag :type="paymentStatus[row.status]?.type" size="small">
+                {{ paymentStatus[row.status]?.text || row.status }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="支付时间" min-width="160">
+            <template #default="{ row }">
+              {{ (row.paidAt || '').replace('T', ' ').slice(0, 19) || '—' }}
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+    </el-dialog>
   </el-card>
 </template>
 

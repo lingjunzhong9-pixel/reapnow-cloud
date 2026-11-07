@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import api from './api'
 
@@ -7,11 +7,20 @@ const router = useRouter()
 const route = useRoute()
 const user = ref(null)
 
+/** 后台角色才能看到「定金流水」入口 */
+const isAdmin = computed(() =>
+  ['ADMIN', 'DISPATCHER'].includes(user.value && user.value.role)
+)
+
 function loadUser() {
   const u = localStorage.getItem('user')
-  if (u) user.value = JSON.parse(u)
+  user.value = u ? JSON.parse(u) : null
 }
 onMounted(loadUser)
+
+// 每次路由变化都重新读一次登录态：
+// 这样登录后菜单立刻正确，不必依赖 Login.vue 里的整页刷新兜底
+watch(() => route.path, loadUser)
 
 function logout() {
   api.post('/auth/logout').catch(() => {})
@@ -37,6 +46,7 @@ const roleText = { FARMER: '农户', MACHINE_OWNER: '农机手', DISPATCHER: '�
         <el-menu-item index="/publish">发布作业需求</el-menu-item>
         <el-menu-item index="/orders">我的接单</el-menu-item>
         <el-menu-item index="/demands">我发布的需求</el-menu-item>
+        <el-menu-item v-if="isAdmin" index="/payments">定金流水</el-menu-item>
       </el-menu>
       <div class="user-box">
         <template v-if="user">
