@@ -152,7 +152,7 @@ npm run dev
 | 服务拆分 | 6 个 Maven 模块，4 个业务服务独立进程，跨服务走 OpenFeign |
 | 注册发现 | Nacos，Feign 用 `lb://服务名` 解析 |
 | 配置中心 | Nacos，`spring.config.import` 拉取，`@RefreshScope` 支持热更新 |
-| 网关鉴权 | Spring Cloud Gateway + GlobalFilter，本地验签 JWT，注入 `X-User-Id` |
+| 网关鉴权 | Spring Cloud Gateway + GlobalFilter，本地验签 JWT，解析出 userId 后注入 `X-User-Id`（覆盖式写入，客户端伪造无效） |
 | 限流熔断 | Sentinel，抢单接口 QPS 5 + 熔断规则，规则代码内置一份保证重启不丢 |
 | 分布式事务 | Seata AT，`@GlobalTransactional` 覆盖「扣亩数 + 建订单」 |
 | 链路追踪 | SkyWalking javaagent，无侵入 |
@@ -168,6 +168,19 @@ update demands
 ```
 
 实测并发 2 抢 1，恰好成功 1 个。
+
+### 关于 `X-User-Id`：网关注入，但业务服务不直接信任
+
+网关验签后会把 JWT 里的 userId 覆盖写入 `X-User-Id`（客户端传来的同名头会被替换）。
+
+但**业务服务并不依赖这个头做鉴权** —— 它们各自拿 token 向用户服务校验身份。原因：
+
+开发环境下服务端口（8081—8084）是对外可达的。如果服务只信 `X-User-Id`，
+绕过网关直连服务就能伪造任意用户。所以真正的身份来源始终是 token，
+`X-User-Id` 目前只用于调用链路标记与日志排查。
+
+后续若把服务端口收回内网（只允许网关访问），可以改为信任 `X-User-Id`，
+省掉每个请求一次远程身份校验。
 
 ---
 

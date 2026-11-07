@@ -3,9 +3,9 @@
 param([switch]$SkipNacosCheck)
 
 $root = $PSScriptRoot
-# 加载本地环境变量（数据库密码等敏感配置不进仓库）
-$envFile = Join-Path $PSScriptRoot "env.local.ps1"
-if (Test-Path $envFile) { . $envFile }
+# 加载本地环境变量（数据库密码等敏感配置不进仓库）
+$envFile = Join-Path $PSScriptRoot "env.local.ps1"
+if (Test-Path $envFile) { . $envFile }
 $log  = Join-Path $root "logs"
 New-Item -ItemType Directory -Force -Path $log | Out-Null
 
@@ -59,6 +59,11 @@ foreach ($s in $services) {
         exit 1
     }
     $javaArgs = @()
+    # ---- JVM 堆上限 ----
+    # 不加 -Xmx 时 JVM 默认最大堆 = 物理内存的 1/4（16G 机器约 3.9G），
+    # 5 个服务加起来会把内存吃光，导致 SkyWalking OAP 被系统干掉。
+    # 这套业务的实际堆需求很小，256M 足够；留出空间给 Nacos/Seata/SkyWalking/浏览器。
+    $javaArgs += @("-Xms128m", "-Xmx256m", "-XX:+UseSerialGC")
     if ($apmAgent) {
         $javaArgs += "-javaagent:$apmAgent"
         $javaArgs += "-Dskywalking.agent.service_name=$($s.name)"
