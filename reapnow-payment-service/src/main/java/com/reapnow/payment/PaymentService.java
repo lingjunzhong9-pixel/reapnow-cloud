@@ -83,4 +83,45 @@ public class PaymentService {
                 })
                 .orElse(false);
     }
+
+    // ==================================================================
+    //  查询能力（验收清单 A-9「定金流水查询」）
+    // ==================================================================
+
+    /**
+     * 按订单查定金流水。
+     * 一个订单可能有多条流水（支付失败后重试、已退款后再开新单），所以返回列表而不是单条。
+     * 新的排在前面，方便直接看到最近的支付尝试。
+     */
+    public java.util.List<Payment> listByOrder(Long orderId) {
+        return paymentRepository.findByOrderIdOrderByIdDesc(orderId);
+    }
+
+    /**
+     * 后台定金流水列表：支持按状态筛选、分页。
+     *
+     * @param status 可选，SUCCESS / FAILED / REFUNDED / PENDING，传空表示全部
+     * @param page   页码，从 1 开始
+     * @param size   每页条数，最大 100（防止一次拉爆）
+     */
+    public org.springframework.data.domain.Page<Payment> listAll(String status, int page, int size) {
+        int p = Math.max(page, 1);
+        int s = Math.min(Math.max(size, 1), 100);
+        org.springframework.data.domain.Pageable pageable =
+                org.springframework.data.domain.PageRequest.of(p - 1, s,
+                        org.springframework.data.domain.Sort.by(
+                                org.springframework.data.domain.Sort.Direction.DESC, "id"));
+
+        if (status != null && !status.isBlank()) {
+            PaymentStatus st;
+            try {
+                st = PaymentStatus.valueOf(status.trim().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new BusinessException("流水状态不合法：" + status
+                        + "，可选值 PENDING / SUCCESS / FAILED / REFUNDED");
+            }
+            return paymentRepository.findByStatus(st, pageable);
+        }
+        return paymentRepository.findAll(pageable);
+    }
 }

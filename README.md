@@ -141,7 +141,7 @@ npm run dev
 | 订单 | `POST /api/orders/grab`、`GET /api/orders/mine`、`GET /api/orders/by-demand/{id}`、`POST /api/orders/{id}/cancel` |
 | 支付 | `POST /api/payments/{orderId}/pay-deposit`、`POST /api/payments/{orderId}/refund` |
 
-共 23 个接口，详见 `项目前置材料` 中的《05-API与数据库设计文档》。
+共 27 个接口（含 4 个演示/诊断接口），详见 `项目前置材料` 中的《05-API与数据库设计文档》。
 
 ---
 
