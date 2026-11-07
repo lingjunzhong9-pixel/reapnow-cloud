@@ -1,0 +1,50 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: reapnow-gateway
+
+  config:
+    import: optional:nacos:reapnow-gateway.yaml
+  cloud:
+    nacos:
+      server-addr: 127.0.0.1:8848
+      discovery:
+        server-addr: 127.0.0.1:8848
+      config:
+        server-addr: 127.0.0.1:8848
+    gateway:
+      discovery:
+        locator:
+          enabled: false          # 只按下面显式配置的路由转发，避免意外暴露内部接口
+      routes:
+        - id: user-service
+          uri: lb://reapnow-user-service
+          predicates:
+            - Path=/api/auth/**,/api/users/**
+        - id: demand-service
+          uri: lb://reapnow-demand-service
+          predicates:
+            - Path=/api/demands/**,/api/config/**
+        - id: order-service
+          uri: lb://reapnow-order-service
+          predicates:
+            - Path=/api/orders/**
+        - id: payment-service
+          uri: lb://reapnow-payment-service
+          predicates:
+            - Path=/api/payments/**
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOriginPatterns: "*"
+            allowedMethods: "*"
+            allowedHeaders: "*"
+            allowCredentials: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway

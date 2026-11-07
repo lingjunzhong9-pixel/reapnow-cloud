@@ -1,0 +1,60 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: reapnow-demand-service
+
+  # ---- Nacos 配置中心：启动时按 dataId = <应用名>.yaml 拉取配置 ----
+  config:
+    import: optional:nacos:reapnow-demand-service.yaml
+
+  cloud:
+    nacos:
+      server-addr: 127.0.0.1:8848
+      discovery:
+        server-addr: 127.0.0.1:8848
+        namespace: public
+        metadata:
+          version: "0.1.0"
+      config:
+        server-addr: 127.0.0.1:8848
+        namespace: public
+        file-extension: yaml
+        refresh-enabled: true
+
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3307/reapnow?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&rewriteBatchedStatements=true
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: root
+    password: "${MYSQL_PASSWORD:}"
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+
+  # ---- Seata AT 分布式事务 ----
+
+seata:
+  enabled: true
+  application-id: reapnow-demand-service
+  tx-service-group: reapnow_tx_group
+  service:
+    vgroup-mapping:
+      reapnow_tx_group: default
+    grouplist:
+      default: 127.0.0.1:8091
+  registry:
+    type: file
+  config:
+    type: file
+  data-source-proxy-mode: AT
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,refresh,env
+  endpoint:
+    health:
+      show-details: always
