@@ -48,6 +48,23 @@ public class DemandController {
         return ApiResponse.ok(demandService.getById(id));
     }
 
+    /**
+     * 演示接口：模拟需求服务变慢（依赖故障）。
+     * 供订单服务的熔断演示调用 —— 当下游响应时间超过熔断阈值，
+     * 调用方会在统计窗口内打开熔断器，后续请求直接走降级，不再打到本接口。
+     */
+    @GetMapping("/{id}/slow")
+    public ApiResponse<String> slow(@PathVariable Long id,
+                                    @RequestParam(defaultValue = "1200") long ms) {
+        Demand d = demandService.getById(id);
+        try {
+            Thread.sleep(ms);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        return ApiResponse.ok("慢响应完成：" + d.getPlotName() + "，耗时 " + ms + "ms");
+    }
+
     /** 内部接口：供订单服务抢单时原子扣减亩数 */
     @PostMapping("/{id}/deduct")
     public ApiResponse<Boolean> deduct(@PathVariable Long id, @RequestParam BigDecimal mu) {

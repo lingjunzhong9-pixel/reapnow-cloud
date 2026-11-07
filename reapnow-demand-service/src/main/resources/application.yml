@@ -10,6 +10,15 @@ spring:
     import: optional:nacos:reapnow-demand-service.yaml
 
   cloud:
+    openfeign:
+      client:
+        config:
+          default:
+            # 连接超时 3 秒：下游不可达时快速失败，不拖垮调用方线程
+            connectTimeout: 3000
+            # 读取超时 5 秒：下游处理过慢时及时放弃，避免请求堆积
+            readTimeout: 5000
+            loggerLevel: basic
     nacos:
       server-addr: 127.0.0.1:8848
       discovery:

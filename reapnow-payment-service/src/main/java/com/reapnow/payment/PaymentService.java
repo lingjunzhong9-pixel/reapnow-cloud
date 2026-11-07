@@ -1,6 +1,7 @@
 package com.reapnow.payment;
 
 import com.reapnow.common.BusinessException;
+import org.apache.seata.spring.annotation.GlobalTransactional;
 import com.reapnow.common.client.OrderClient;
 import com.reapnow.common.dto.OrderVO;
 import lombok.RequiredArgsConstructor;
@@ -23,8 +24,16 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final OrderClient orderClient;
 
+    /**
+     * 支付定金。这是本项目的第二个分布式事务场景：
+     *   支付服务写 payments 流水  +  订单服务把订单置为 DEPOSIT_PAID
+     * 两步跨服务，任一失败都必须整体回滚 —— 否则会出现「钱扣了订单没变」或反之。
+     *
+     * @param simulateFail 仅用于演示：true 时写完流水后故意抛异常，验证整笔回滚
+     */
+    @GlobalTransactional(name = "reapnow-pay-deposit", rollbackFor = Exception.class)
     @Transactional
-    public Payment payDeposit(Long ownerId, Long orderId, String channel) {
+    public Payment payDeposit(Long ownerId, Long orderId, String channel, boolean simulateFail) {
         OrderVO o = orderClient.byId(orderId).getData();
         if (o == null) {
             throw new BusinessException("订单不存在");
@@ -53,7 +62,12 @@ public class PaymentService {
         p.setPaidAt(LocalDateTime.now());
         paymentRepository.save(p);
 
-        // 回调订单服务：跨服务写操作，第 7 周由 Seata 全局事务覆盖
+        if (simulateFail) {
+            // 故障注入：流水已写库，这里抛异常，观察 payments 表是否回滚
+            throw new BusinessException("【故障注入】支付流水已写入，现在故意失败，即将触发全局回滚");
+        }
+
+        // 回调订单服务：跨服务写操作，由 Seata 全局事务覆盖
         orderClient.markPaid(orderId);
         return p;
     }

@@ -17,6 +17,10 @@ public interface DemandClient {
     @GetMapping("/api/demands/{id}")
     ApiResponse<DemandVO> byId(@PathVariable("id") Long id);
 
+    /** 演示：调用需求服务的慢接口，用于触发调用方熔断 */
+    @GetMapping("/api/demands/{id}/slow")
+    ApiResponse<String> slow(@PathVariable("id") Long id, @RequestParam("ms") long ms);
+
     /** 原子扣减亩数；data=false 表示被抢走了 */
     @PostMapping("/api/demands/{id}/deduct")
     ApiResponse<Boolean> deduct(@PathVariable("id") Long id, @RequestParam("mu") BigDecimal mu);

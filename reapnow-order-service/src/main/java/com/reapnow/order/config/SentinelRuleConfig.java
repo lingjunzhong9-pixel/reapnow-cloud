@@ -80,6 +80,16 @@ public class SentinelRuleConfig {
         ex.setStatIntervalMs(10000);
         rules.add(ex);
 
+        // 熔断演示资源：慢调用比例熔断（RT > 300ms 且比例 > 50%，10 秒窗口，最小 3 次请求）
+        DegradeRule demo = new DegradeRule("orderDegradeDemo");
+        demo.setGrade(RuleConstant.DEGRADE_GRADE_RT);
+        demo.setCount(300);
+        demo.setSlowRatioThreshold(0.5);
+        demo.setTimeWindow(10);
+        demo.setMinRequestAmount(3);
+        demo.setStatIntervalMs(10000);
+        rules.add(demo);
+
         DegradeRuleManager.loadRules(rules);
         System.out.println("[Sentinel] 已加载熔断规则 " + rules.size() + " 条");
     }
