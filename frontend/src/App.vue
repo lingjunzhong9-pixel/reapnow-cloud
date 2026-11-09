@@ -35,7 +35,8 @@ const roleText = { FARMER: '农户', MACHINE_OWNER: '农机手', DISPATCHER: '�
 
 <template>
   <el-container class="layout">
-    <el-header class="header">
+    <!-- 登录页全屏沉浸，不显示顶栏 -->
+    <el-header v-if="route.path !== '/login'" class="header">
       <div class="brand" @click="router.push('/')">
         <span class="logo">🌾</span>
         <span class="name">抢收</span>
