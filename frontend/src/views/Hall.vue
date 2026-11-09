@@ -152,7 +152,7 @@ async function doGrab() {
         <div class="d-deadline">最迟收割：<b>{{ d.deadline }}</b></div>
         <div v-if="d.remark" class="d-remark">{{ d.remark }}</div>
 
-        <el-button type="primary" class="grab" :disabled="d.remainMu <= 0" @click="openGrab(d)">
+        <el-button class="grab" :disabled="d.remainMu <= 0" @click="openGrab(d)">
           {{ d.remainMu <= 0 ? '已被抢满' : '我要抢这块地' }}
         </el-button>
       </el-card>
@@ -241,25 +241,35 @@ async function doGrab() {
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 
-/* 抢单按钮：默认描边，悬停才填色 —— 一屏 9 个实心绿条太重，这样更克制 */
+/* 抢单按钮：实心麦金 —— 和登录页「进入抢收季」同一个语言，
+   金色在全站统一表示「这是你要做的那件事」 */
 .grab {
-  width: 100%; margin-top: 13px;
-  background: transparent;
-  border: 1px solid #cdbb94;
-  color: #7d6535;
-  font-weight: 600;
-  letter-spacing: .6px;
-  transition: all .18s ease;
+  width: 100%;
+  margin-top: 14px;
+  height: 40px;
+  background: linear-gradient(150deg, #f5d78c 0%, #d9a63c 52%, #bf8d2c 100%);
+  border: none;
+  color: #241a0c !important;
+  font-size: 14.5px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  box-shadow: 0 3px 12px rgba(191, 141, 44, .32), inset 0 1px 0 rgba(255, 255, 255, .45);
+  transition: filter .16s ease, box-shadow .18s ease, transform .14s ease;
 }
-.grab:hover:not(.is-disabled):not(.is-disabled:hover) {
-  background: linear-gradient(180deg, #4b7a4b, #3f6b3f);
-  border-color: #3f6b3f;
-  color: #fff;
+.grab:hover:not(.is-disabled) {
+  filter: brightness(1.07);
+  box-shadow: 0 7px 20px rgba(191, 141, 44, .45), inset 0 1px 0 rgba(255, 255, 255, .5);
+  transform: translateY(-1px);
+}
+.grab:active:not(.is-disabled) {
+  transform: translateY(0);
+  filter: brightness(.98);
 }
 .grab.is-disabled {
-  background: #f4eee1;
-  border-color: #e6dcc6;
-  color: #b0a68f;
+  background: #efe8d8;
+  color: #b3a992 !important;
+  box-shadow: none;
+  letter-spacing: 1px;
 }
 
 .pager { display: flex; justify-content: flex-end; margin-top: 18px; }
