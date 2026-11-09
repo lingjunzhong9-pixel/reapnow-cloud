@@ -85,7 +85,7 @@ async function cancel(row) {
       <span class="h-sub">抢到地之后要付定金才算锁定档期 —— 这是对农户的履约承诺</span>
     </template>
     <el-table :data="list">
-      <el-table-column prop="orderNo" label="订单号" min-width="170" />
+      <el-table-column prop="orderNo" label="订单号" min-width="200" class-name="col-no" />
       <el-table-column prop="plotName" label="地块" min-width="130" />
       <el-table-column prop="region" label="地区" min-width="130" />
       <el-table-column prop="farmerName" label="农户" width="90" />

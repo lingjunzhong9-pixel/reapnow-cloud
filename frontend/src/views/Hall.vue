@@ -194,25 +194,78 @@ async function doGrab() {
 </template>
 
 <style scoped>
+/* 与登录页同一套语言：米纸底 + 麦金点缀 + 深绿主色 */
 .filter { margin-bottom: 16px; }
+
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 14px; }
-.demand { border-top: 3px solid #67c23a; }
-.d-head { display: flex; justify-content: space-between; align-items: center; }
-.plot { font-size: 17px; font-weight: 700; color: #2f3f2f; }
-.d-region { color: #909399; font-size: 12px; margin: 6px 0 10px; }
-.d-metrics { display: flex; gap: 10px; }
-.metric { flex: 1; background: #f7faf5; border-radius: 6px; padding: 8px 10px; }
-.mv { font-size: 20px; font-weight: 700; color: #2f6b2f; }
-.mv.price { color: #e6a23c; }
-.mu { font-size: 12px; font-weight: 400; color: #909399; margin-left: 2px; }
-.ml { font-size: 11px; color: #909399; }
-.d-tags { display: flex; gap: 6px; margin: 10px 0 8px; flex-wrap: wrap; }
-.d-deadline { font-size: 13px; color: #606266; }
-.d-remark { font-size: 12px; color: #a0a8a0; margin-top: 6px; line-height: 1.5;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.grab { width: 100%; margin-top: 12px; }
-.pager { display: flex; justify-content: flex-end; margin-top: 16px; }
-:deep(.u-red) { background: #f56c6c !important; }
-:deep(.u-orange) { background: #e6a23c !important; }
-:deep(.u-green) { background: #67c23a !important; }
+
+.demand {
+  border-top: 2px solid #e2c88d;
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.demand:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(60, 45, 26, .07), 0 18px 40px rgba(60, 45, 26, .08) !important;
+}
+
+.d-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.plot {
+  font-family: "KaiTi", "STKaiti", serif;
+  font-size: 20px; font-weight: 700; color: #2b2318; letter-spacing: .5px;
+}
+.d-region { color: #96896f; font-size: 12px; margin: 7px 0 11px; letter-spacing: .3px; }
+
+.d-metrics { display: flex; gap: 9px; }
+.metric {
+  flex: 1;
+  background: linear-gradient(180deg, #fdf8ee, #f9f2e2);
+  border: 1px solid #efe4cd;
+  border-radius: 4px;
+  padding: 9px 11px;
+}
+.mv {
+  font-size: 21px; font-weight: 700; color: #3f6b3f;
+  font-variant-numeric: tabular-nums;
+}
+.mv.price { color: #b8862b; }
+.mu { font-size: 12px; font-weight: 400; color: #a0947a; margin-left: 2px; }
+.ml { font-size: 11px; color: #a89a80; margin-top: 1px; }
+
+.d-tags { display: flex; gap: 6px; margin: 11px 0 9px; flex-wrap: wrap; }
+
+.d-deadline { font-size: 13px; color: #6b5f4a; }
+.d-deadline b { color: #2b2318; font-variant-numeric: tabular-nums; }
+
+.d-remark {
+  font-size: 12px; color: #a3967d; margin-top: 7px; line-height: 1.55;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+
+/* 抢单按钮：默认描边，悬停才填色 —— 一屏 9 个实心绿条太重，这样更克制 */
+.grab {
+  width: 100%; margin-top: 13px;
+  background: transparent;
+  border: 1px solid #cdbb94;
+  color: #7d6535;
+  font-weight: 600;
+  letter-spacing: .6px;
+  transition: all .18s ease;
+}
+.grab:hover:not(.is-disabled):not(.is-disabled:hover) {
+  background: linear-gradient(180deg, #4b7a4b, #3f6b3f);
+  border-color: #3f6b3f;
+  color: #fff;
+}
+.grab.is-disabled {
+  background: #f4eee1;
+  border-color: #e6dcc6;
+  color: #b0a68f;
+}
+
+.pager { display: flex; justify-content: flex-end; margin-top: 18px; }
+
+/* 紧急度标签：把高饱和的红/橙换成更沉的农事色 */
+:deep(.u-red) { background: #b04a30 !important; }
+:deep(.u-orange) { background: #c08a2a !important; }
+:deep(.u-green) { background: #6b8f4a !important; }
 </style>
