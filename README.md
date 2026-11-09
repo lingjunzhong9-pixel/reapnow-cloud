@@ -153,9 +153,9 @@ npm run dev
 | 用户 | `POST /api/auth/register`、`POST /api/auth/login`、`GET /api/users/{id}` |
 | 需求 | `POST /api/demands`、`GET /api/demands`、`GET /api/demands/mine`、`POST /api/demands/{id}/deduct` |
 | 订单 | `POST /api/orders/grab`、`GET /api/orders/mine`、`GET /api/orders/by-demand/{id}`、`POST /api/orders/{id}/cancel` |
-| 支付 | `POST /api/payments/{orderId}/pay-deposit`、`POST /api/payments/{orderId}/refund`、`GET /api/payments/by-order/{orderId}`、`GET /api/payments` |
+| 支付 | `POST /api/payments/{orderId}/pay-deposit`、`POST /api/payments/{orderId}/refund`、`GET /api/payments/by-order/{orderId}`、`GET /api/payments`、`GET /api/payments/{id}` |
 
-共 27 个接口（含 4 个演示/诊断接口），详见 `项目前置材料` 中的《05-API与数据库设计文档》。
+共 28 个接口（含 4 个演示/诊断接口），详见 `项目前置材料` 中的《05-API与数据库设计文档》。
 
 ---
 

@@ -86,6 +86,11 @@ export const paymentApi = {
    */
   list: ({ status, page = 1, size = 10 } = {}) =>
     api.get('/payments', { params: { status: status || undefined, page, size } }),
+
+  /**
+   * C04-5 后台流水详情 —— 含关联订单与交易双方（仅 ADMIN / DISPATCHER）
+   */
+  detail: (id) => api.get(`/payments/${id}`),
 }
 
 export default api

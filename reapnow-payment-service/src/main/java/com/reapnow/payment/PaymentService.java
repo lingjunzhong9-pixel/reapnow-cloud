@@ -3,7 +3,10 @@ package com.reapnow.payment;
 import com.reapnow.common.BusinessException;
 import org.apache.seata.spring.annotation.GlobalTransactional;
 import com.reapnow.common.client.OrderClient;
+import com.reapnow.common.client.UserClient;
 import com.reapnow.common.dto.OrderVO;
+import com.reapnow.common.dto.PaymentDetailVO;
+import com.reapnow.common.dto.UserVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +26,7 @@ public class PaymentService {
 
     private final PaymentRepository paymentRepository;
     private final OrderClient orderClient;
+    private final UserClient userClient;
 
     /**
      * 支付定金。这是本项目的第二个分布式事务场景：
@@ -123,5 +127,64 @@ public class PaymentService {
             return paymentRepository.findByStatus(st, pageable);
         }
         return paymentRepository.findAll(pageable);
+    }
+
+    /**
+     * 定金流水详情：把「流水 + 订单 + 交易双方」聚合起来给后台看。
+     *
+     * <p>payments 表只存了 orderId，管理员光看流水号看不出这笔钱是谁付给谁的、对应哪块地。
+     * 这里通过两次 Feign 调用补齐：
+     * <ul>
+     *   <li>OrderClient  取订单：机手、农户、地块、亩数、单价、总额、定金、订单状态</li>
+     *   <li>UserClient   取机手手机号（订单里只有姓名，没有联系方式）</li>
+     * </ul>
+     * 支付方固定是机手（付定金的一方），收款方固定是农户。
+     */
+    public PaymentDetailVO detail(Long paymentId) {
+        Payment p = paymentRepository.findById(paymentId)
+                .orElseThrow(() -> new BusinessException("流水不存在：" + paymentId));
+
+        OrderVO o = null;
+        try {
+            o = orderClient.byId(p.getOrderId()).getData();
+        } catch (Exception ignored) {
+            // 订单服务不可用时，详情页仍要能打开，只是订单区块显示为空
+        }
+
+        String payerPhone = null;
+        if (o != null && o.ownerId() != null) {
+            try {
+                UserVO u = userClient.byId(o.ownerId()).getData();
+                payerPhone = (u == null ? null : u.phone());
+            } catch (Exception ignored) {
+            }
+        }
+
+        return new PaymentDetailVO(
+                p.getId(), p.getPaymentNo(), p.getAmount(),
+                p.getType() == null ? null : p.getType().name(),
+                p.getChannel(),
+                p.getStatus() == null ? null : p.getStatus().name(),
+                p.getPaidAt(),
+
+                p.getOrderId(),
+                o == null ? null : o.orderNo(),
+                o == null ? null : o.status(),
+                o == null ? null : o.plotName(),
+                o == null ? null : o.region(),
+                o == null ? null : o.mu(),
+                o == null ? null : o.pricePerMu(),
+                o == null ? null : o.amount(),
+                o == null ? null : o.deposit(),
+                o == null ? null : o.machineModel(),
+                o == null ? null : o.createdAt(),
+                o == null ? null : o.serviceDate(),
+
+                o == null ? null : o.ownerId(),
+                o == null ? null : o.ownerName(),
+                payerPhone,
+                o == null ? null : o.farmerName(),
+                o == null ? null : o.farmerPhone()
+        );
     }
 }

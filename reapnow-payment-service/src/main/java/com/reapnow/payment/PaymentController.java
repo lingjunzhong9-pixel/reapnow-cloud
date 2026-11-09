@@ -3,6 +3,7 @@ package com.reapnow.payment;
 import com.reapnow.common.ApiResponse;
 import com.reapnow.common.BusinessException;
 import com.reapnow.common.client.UserClient;
+import com.reapnow.common.dto.PaymentDetailVO;
 import com.reapnow.common.dto.UserVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -65,5 +66,22 @@ public class PaymentController {
             throw new BusinessException("仅管理员与调度员可查看定金流水列表");
         }
         return ApiResponse.ok(paymentService.listAll(status, page, size));
+    }
+
+    /**
+     * 后台：单条流水详情 —— 含关联订单、地块与交易双方。
+     *
+     * <p>列表页只给流水号/金额/状态，管理员要核账必须能点进去看到：
+     * 谁付的（机手）、付给谁（农户）、哪块地、订单现在什么状态。
+     * 这些字段分散在支付服务、订单服务、用户服务三处，由 paymentService.detail() 聚合。
+     */
+    @GetMapping("/{id}")
+    public ApiResponse<PaymentDetailVO> detail(@PathVariable Long id,
+                                               @RequestHeader("X-Token") String token) {
+        UserVO me = userClient.verify(token).getData();
+        if (!"ADMIN".equals(me.role()) && !"DISPATCHER".equals(me.role())) {
+            throw new BusinessException("仅管理员与调度员可查看定金流水详情");
+        }
+        return ApiResponse.ok(paymentService.detail(id));
     }
 }
