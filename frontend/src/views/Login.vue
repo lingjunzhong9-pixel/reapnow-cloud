@@ -96,7 +96,21 @@ function toggle() {
       <!-- 左：谚语与数据 -->
       <section class="hero">
         <div class="brand">
-          <span class="seal">抢</span>
+          <span class="seal" aria-hidden="true">
+            <!-- 麦穗标志：不用汉字，避免「抢」在小尺寸下被误读成「枪」 -->
+            <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <!-- 穗身：杏仁形轮廓 -->
+              <path d="M20 2.6C27.8 9.6 28.8 21.8 20 31.4C11.2 21.8 12.2 9.6 20 2.6Z" fill="#1a130a" />
+              <!-- 穗内三排 V 形纹路 -->
+              <g stroke="#d9a63c" stroke-width="1.7" stroke-linecap="round" fill="none">
+                <path d="M20 9.6L15.9 13.6M20 9.6L24.1 13.6" />
+                <path d="M20 15.2L15.5 19.5M20 15.2L24.5 19.5" />
+                <path d="M20 20.9L16 24.9M20 20.9L24 24.9" />
+              </g>
+              <!-- 穗茎 -->
+              <path d="M20 30.2V37.2" stroke="#1a130a" stroke-width="2.2" stroke-linecap="round" />
+            </svg>
+          </span>
           <span class="brand-txt">
             <b>抢收</b>
             <i>ReapNow</i>
@@ -345,12 +359,11 @@ function toggle() {
 .seal {
   width: 40px; height: 40px; flex: none;
   display: grid; place-items: center;
-  font-family: "KaiTi", "STKaiti", serif;
-  font-size: 24px; font-weight: 700; color: #1a130a;
-  background: linear-gradient(150deg, #f5d27c, #d4a13a);
-  border-radius: 3px;
-  box-shadow: 0 2px 12px rgba(212, 161, 58, .45), inset 0 1px 0 rgba(255, 255, 255, .5);
+  background: linear-gradient(150deg, #f7d98d, #d4a13a 62%, #c0902f);
+  border-radius: 4px;
+  box-shadow: 0 2px 12px rgba(212, 161, 58, .45), inset 0 1px 0 rgba(255, 255, 255, .55);
 }
+.seal svg { width: 31px; height: 31px; display: block; }
 .brand-txt { display: flex; align-items: baseline; gap: 9px; }
 .brand-txt b { font-size: 19px; letter-spacing: 6px; font-weight: 700; }
 .brand-txt i {
