@@ -70,6 +70,57 @@ function openGrab(d) {
   grabDialog.value = true
 }
 
+// ---------------- 需求详情抽屉 ----------------
+function fmt(t) {
+  return t ? String(t).replace('T', ' ').slice(0, 16) : '—'
+}
+
+const detailDrawer = ref(false)
+const detailLoading = ref(false)
+const detail = ref(null)
+const grabbers = ref([])
+
+const orderStatusMap = {
+  PENDING_DEPOSIT: { text: '待付定金', type: 'warning' },
+  DEPOSIT_PAID: { text: '定金已付 · 履约中', type: 'success' },
+  DONE: { text: '已完成', type: 'info' },
+  CANCELLED: { text: '已取消', type: 'info' }
+}
+
+/** 预计总额 = 剩余亩数 × 单价 */
+const detailEstimate = computed(() => {
+  const d = detail.value
+  if (!d) return null
+  const amt = Number(d.remainMu) * Number(d.pricePerMu)
+  return { amount: amt.toFixed(2), deposit: (amt * 0.3).toFixed(2) }
+})
+
+/**
+ * 打开需求详情。
+ * 先用列表里已有的数据占位（秒开），再并发拉两个接口补全：
+ *   GET /api/demands/{id}          需求详情（C02-4）
+ *   GET /api/orders/by-demand/{id} 这块地被谁抢了（C03-3）
+ * 任一接口失败都静默降级 —— 详情页至少要能显示卡片上已有的信息。
+ */
+async function openDetail(d) {
+  detailDrawer.value = true
+  detail.value = d
+  grabbers.value = []
+  detailLoading.value = true
+  try {
+    const [fresh, orders] = await Promise.all([
+      api.get(`/demands/${d.id}`).catch(() => null),
+      api.get(`/orders/by-demand/${d.id}`).catch(() => []),
+    ])
+    if (fresh) detail.value = fresh
+    grabbers.value = Array.isArray(orders) ? orders : []
+  } catch (e) {
+    // 接口不可用时保留占位数据
+  } finally {
+    detailLoading.value = false
+  }
+}
+
 const estimate = computed(() => {
   if (!current.value) return { amount: 0, deposit: 0 }
   const amount = (Number(grabMu.value) || 0) * Number(current.value.pricePerMu)
@@ -149,7 +200,10 @@ async function doGrab() {
           <el-tag v-if="d.lodged" size="small" type="danger" effect="plain">倒伏（可加价）</el-tag>
         </div>
 
-        <div class="d-deadline">最迟收割：<b>{{ d.deadline }}</b></div>
+        <div class="d-foot-row">
+          <div class="d-deadline">最迟收割：<b>{{ d.deadline }}</b></div>
+          <el-button link type="primary" class="d-more" @click.stop="openDetail(d)">详情</el-button>
+        </div>
         <div v-if="d.remark" class="d-remark">{{ d.remark }}</div>
 
         <el-button class="grab" :disabled="d.remainMu <= 0" @click="openGrab(d)">
@@ -190,6 +244,110 @@ async function doGrab() {
         <el-button type="primary" :loading="submitting" @click="doGrab">确认抢单</el-button>
       </template>
     </el-dialog>
+
+    <!-- ==================== 需求详情抽屉 ==================== -->
+    <el-drawer v-model="detailDrawer" title="作业需求详情" size="660px">
+      <div v-loading="detailLoading" class="dt">
+        <template v-if="detail">
+          <!-- 头部 -->
+          <div class="dt-head">
+            <div>
+              <div class="dt-plot">{{ detail.plotName }}</div>
+              <div class="dt-region">📍 {{ detail.region }} · {{ detail.farmerName }}</div>
+            </div>
+            <el-tag :class="urgency(detail).cls" effect="dark" style="border:none">
+              {{ urgency(detail).text }}
+            </el-tag>
+          </div>
+
+          <!-- 核心指标 -->
+          <div class="dt-metrics">
+            <div class="dm">
+              <b>{{ detail.remainMu }}<span>亩</span></b>
+              <i>可接 / 共 {{ detail.mu }} 亩</i>
+            </div>
+            <div class="dm">
+              <b class="gold">¥{{ detail.pricePerMu }}<span>/亩</span></b>
+              <i>农户期望单价</i>
+            </div>
+            <div class="dm">
+              <b class="gold">¥{{ detailEstimate?.amount }}</b>
+              <i>接满预计总额</i>
+            </div>
+          </div>
+
+          <!-- 需求信息 -->
+          <h3 class="dt-sec">需求信息</h3>
+          <el-descriptions :column="2" border size="small">
+            <el-descriptions-item label="地块名称">{{ detail.plotName }}</el-descriptions-item>
+            <el-descriptions-item label="所在地区">{{ detail.region }}</el-descriptions-item>
+            <el-descriptions-item label="总亩数">{{ detail.mu }} 亩</el-descriptions-item>
+            <el-descriptions-item label="剩余可接">{{ detail.remainMu }} 亩</el-descriptions-item>
+            <el-descriptions-item label="期望单价">¥{{ detail.pricePerMu }} / 亩</el-descriptions-item>
+            <el-descriptions-item label="麦子状态">
+              <el-tag :type="stageMap[detail.cropStage]?.type" size="small">
+                {{ stageMap[detail.cropStage]?.text }}
+              </el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="最迟收割">{{ detail.deadline }}</el-descriptions-item>
+            <el-descriptions-item label="剩余天数">
+              <b :class="detail.daysLeft <= 1 ? 'urgent' : ''">{{ detail.daysLeft }} 天</b>
+            </el-descriptions-item>
+            <el-descriptions-item label="地块倒伏">
+              <el-tag v-if="detail.lodged" type="danger" effect="plain" size="small">是（可加价）</el-tag>
+              <span v-else>否</span>
+            </el-descriptions-item>
+            <el-descriptions-item label="农户联系电话">{{ detail.farmerPhone || '—' }}</el-descriptions-item>
+            <el-descriptions-item label="当前状态">
+              {{ detail.status === 'OPEN' ? '可抢单' : detail.status === 'FULL' ? '已抢满' : detail.status }}
+            </el-descriptions-item>
+            <el-descriptions-item label="发布时间">{{ fmt(detail.createdAt) }}</el-descriptions-item>
+          </el-descriptions>
+
+          <template v-if="detail.remark">
+            <h3 class="dt-sec">农户备注</h3>
+            <div class="dt-remark">{{ detail.remark }}</div>
+          </template>
+
+          <!-- 抢单记录 -->
+          <h3 class="dt-sec">
+            抢单记录
+            <span class="cnt">共 {{ grabbers.length }} 笔</span>
+          </h3>
+          <el-table v-if="grabbers.length" :data="grabbers" size="small" border>
+            <el-table-column prop="ownerName" label="机手" width="90" />
+            <el-table-column label="承接亩数" width="90">
+              <template #default="{ row }">{{ row.mu }} 亩</template>
+            </el-table-column>
+            <el-table-column label="金额" width="90">
+              <template #default="{ row }">¥{{ row.amount }}</template>
+            </el-table-column>
+            <el-table-column label="定金" width="90">
+              <template #default="{ row }"><span class="gold">¥{{ row.deposit }}</span></template>
+            </el-table-column>
+            <el-table-column label="状态" min-width="120">
+              <template #default="{ row }">
+                <el-tag :type="orderStatusMap[row.status]?.type" size="small">
+                  {{ orderStatusMap[row.status]?.text || row.status }}
+                </el-tag>
+              </template>
+            </el-table-column>
+          </el-table>
+          <el-empty v-else :image-size="60" description="还没有机手抢这块地" />
+
+          <div class="dt-foot">
+            需求编号 {{ detail.demandNo }} · 需求 ID {{ detail.id }}
+          </div>
+        </template>
+      </div>
+
+      <template #footer>
+        <el-button @click="detailDrawer = false">关闭</el-button>
+        <el-button v-if="detail && detail.remainMu > 0" class="dt-grab" @click="detailDrawer = false; openGrab(detail)">
+          我要抢这块地
+        </el-button>
+      </template>
+    </el-drawer>
   </div>
 </template>
 
@@ -236,6 +394,9 @@ async function doGrab() {
 .d-deadline { font-size: 13px; color: #6b5f4a; }
 .d-deadline b { color: #2b2318; font-variant-numeric: tabular-nums; }
 
+.d-foot-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.d-more { font-size: 12.5px; color: #b8862b !important; }
+
 .d-remark {
   font-size: 12px; color: #a3967d; margin-top: 7px; line-height: 1.55;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
@@ -278,4 +439,68 @@ async function doGrab() {
 :deep(.u-red) { background: #b04a30 !important; }
 :deep(.u-orange) { background: #c08a2a !important; }
 :deep(.u-green) { background: #6b8f4a !important; }
+
+/* ---------------- 需求详情抽屉 ---------------- */
+.dt { min-height: 200px; }
+
+.dt-head {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+  padding: 14px 16px; margin-bottom: 16px;
+  background: linear-gradient(135deg, #fdf8ee, #f8f1e0);
+  border: 1px solid #efe4cd; border-radius: 5px;
+}
+.dt-plot {
+  font-family: "KaiTi", "STKaiti", serif;
+  font-size: 24px; font-weight: 700; color: #2b2318; letter-spacing: .5px;
+}
+.dt-region { font-size: 12.5px; color: #96896f; margin-top: 5px; }
+
+.dt-metrics { display: flex; gap: 10px; }
+.dt-metrics .dm {
+  flex: 1; text-align: center; padding: 11px 8px;
+  background: linear-gradient(180deg, #fdf8ee, #f9f2e2);
+  border: 1px solid #efe4cd; border-radius: 4px;
+}
+.dt-metrics .dm b {
+  display: block; font-size: 21px; font-weight: 700; color: #3f6b3f;
+  font-variant-numeric: tabular-nums;
+}
+.dt-metrics .dm b.gold { color: #b8862b; }
+.dt-metrics .dm b span { font-size: 12px; font-weight: 400; color: #a0947a; margin-left: 2px; }
+.dt-metrics .dm i { font-style: normal; font-size: 11px; color: #a89a80; display: block; margin-top: 3px; }
+
+.dt-sec {
+  font-size: 13.5px; font-weight: 700; color: #2f5230;
+  margin: 20px 0 11px; padding-left: 9px;
+  border-left: 3px solid #c9a227;
+}
+.dt-sec .cnt { font-size: 11.5px; font-weight: 400; color: #a89a80; margin-left: 8px; }
+
+.dt-remark {
+  font-size: 13px; color: #5c5140; line-height: 1.85;
+  padding: 11px 13px;
+  background: #fcf8ef; border: 1px solid #f0e7d4; border-radius: 4px;
+}
+
+.urgent { color: #b04a30; }
+.gold { color: #b8862b; font-weight: 600; }
+
+.dt-foot {
+  margin-top: 20px; padding-top: 13px;
+  border-top: 1px dashed #e8dfcd;
+  font-size: 11.5px; color: #a89a80;
+  font-family: Consolas, monospace;
+  word-break: break-all;
+}
+
+/* 抽屉底部主按钮：与卡片上的抢单按钮同一套金色 */
+.dt-grab {
+  background: linear-gradient(150deg, #f5d78c 0%, #d9a63c 52%, #bf8d2c 100%) !important;
+  border: none !important;
+  color: #241a0c !important;
+  font-weight: 700;
+  letter-spacing: 1px;
+  box-shadow: 0 3px 12px rgba(191, 141, 44, .3);
+}
+.dt-grab:hover { filter: brightness(1.06); }
 </style>
