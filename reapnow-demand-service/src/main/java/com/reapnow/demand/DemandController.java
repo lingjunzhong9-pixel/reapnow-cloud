@@ -1,6 +1,7 @@
 package com.reapnow.demand;
 
 import com.reapnow.common.ApiResponse;
+import com.reapnow.common.BusinessException;
 import com.reapnow.common.client.UserClient;
 import com.reapnow.common.dto.UserVO;
 import jakarta.validation.Valid;
@@ -10,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/demands")
@@ -18,6 +20,7 @@ public class DemandController {
 
     private final DemandService demandService;
     private final UserClient userClient;
+    private final UrgentScanTask urgentScanTask;
 
     @PostMapping
     public ApiResponse<Demand> create(@RequestHeader("X-Token") String token,
@@ -32,9 +35,23 @@ public class DemandController {
             @RequestParam(required = false) String region,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String sort,
+            @RequestParam(required = false) Boolean urgent,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size) {
-        return ApiResponse.ok(demandService.search(status, region, keyword, sort, page, size));
+        return ApiResponse.ok(demandService.search(status, region, keyword, sort, urgent, page, size));
+    }
+
+    /**
+     * 手动触发临期巡检（仅调度员 / 管理员）。
+     * 定时任务 30 分钟跑一次；调度员在工作台点一下立刻跑，答辩演示也用它。
+     */
+    @PostMapping("/scan-urgent")
+    public ApiResponse<Map<String, Object>> scanUrgent(@RequestHeader("X-Token") String token) {
+        UserVO me = userClient.verify(token).getData();
+        if (!"DISPATCHER".equals(me.role()) && !"ADMIN".equals(me.role())) {
+            throw new BusinessException("只有调度员可以手动触发巡检");
+        }
+        return ApiResponse.ok(urgentScanTask.manualScan());
     }
 
     @GetMapping("/mine")

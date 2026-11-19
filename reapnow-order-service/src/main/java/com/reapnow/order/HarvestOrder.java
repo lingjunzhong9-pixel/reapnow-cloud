@@ -60,6 +60,18 @@ public class HarvestOrder {
     @Enumerated(EnumType.STRING)
     private OrderStatus status;
 
+    /** 订单来源：GRAB = 机手自助抢单；ASSIGN = 调度员兜底指派 */
+    private String source;
+
+    /**
+     * 指派方（仅 source=ASSIGN 时有值）—— 记「谁指派的」。
+     * 订单落库时快照调度员姓名，避免以后查人还要跨服务。
+     */
+    private String assignBy;
+
+    /** 指派备注（仅 source=ASSIGN 时有值）—— 记「为什么指派」，如「临期无人接单，调度兜底」 */
+    private String assignNote;
+
     private LocalDateTime createdAt;
 
     private LocalDateTime paidAt;

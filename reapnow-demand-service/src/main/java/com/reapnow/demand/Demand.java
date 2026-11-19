@@ -64,6 +64,23 @@ public class Demand {
     /** 是否有倒伏（倒伏地块作业难度大、通常要加价） */
     private Boolean lodged;
 
+    /**
+     * 临期加急标记。
+     * 截止前 48 小时（开启天气预警联动后为 72 小时）仍未被抢满的需求，
+     * 由定时巡检任务（UrgentScanTask）自动打标，抢单大厅默认排最前。
+     */
+    private Boolean urgent;
+
+    /**
+     * 农户授权的临期自动加价上限（百分比，0~20）。
+     * 截止日当天仍无人接单时，系统按该幅度一次性上调期望单价并重新曝光；
+     * 0 或空表示不授权，绝不加价。
+     */
+    private Integer markupLimit;
+
+    /** 本次授权加价是否已应用 —— 只加一次，防止巡检重复加价 */
+    private Boolean markupApplied;
+
     private String remark;
 
     @Enumerated(EnumType.STRING)

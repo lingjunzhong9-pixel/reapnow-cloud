@@ -7,7 +7,7 @@ const router = useRouter()
 const route = useRoute()
 const user = ref(null)
 
-/** 后台角色才能看到「定金流水」入口 */
+/** 后台角色（调度员/管理员）才能看到「调度工作台」「定金流水」入口 */
 const isAdmin = computed(() =>
   ['ADMIN', 'DISPATCHER'].includes(user.value && user.value.role)
 )
@@ -59,6 +59,7 @@ const roleText = { FARMER: '农户', MACHINE_OWNER: '农机手', DISPATCHER: '�
         <el-menu-item index="/publish">发布作业需求</el-menu-item>
         <el-menu-item index="/orders">我的接单</el-menu-item>
         <el-menu-item index="/demands">我发布的需求</el-menu-item>
+        <el-menu-item v-if="isAdmin" index="/dispatcher">调度工作台</el-menu-item>
         <el-menu-item v-if="isAdmin" index="/payments">定金流水</el-menu-item>
       </el-menu>
 

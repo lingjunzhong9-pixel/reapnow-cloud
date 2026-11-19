@@ -36,9 +36,17 @@ async function viewPayments(row) {
   }
 }
 
+/** 「调度指派」角标的悬浮说明：谁指派的、为什么指派。
+ *  这两个字段在订单落库时做了快照（assignBy / assignNote），
+ *  机手能看明白这单不是自己抢的，而是调度兜底派过来的。 */
+function assignTip(row) {
+  const by = row.assignBy || '调度员'
+  const note = row.assignNote ? '：' + row.assignNote : ''
+  return `由 ${by} 指派${note}`
+}
+
 const statusMap = {
-  PENDING_DEPOSIT: { text: '待付定金', type: 'warning' },
-  DEPOSIT_PAID: { text: '定金已付·履约中', type: 'success' },
+  PENDING_DEPOSIT: { text: '待付定金', type: 'warning' },  DEPOSIT_PAID: { text: '定金已付·履约中', type: 'success' },
   DONE: { text: '作业完成', type: 'info' },
   CANCELLED: { text: '已取消', type: 'info' }
 }
@@ -101,9 +109,13 @@ async function cancel(row) {
       <el-table-column label="最迟收割" width="110">
         <template #default="{ row }">{{ (row.serviceDate || '').slice(0, 10) }}</template>
       </el-table-column>
-      <el-table-column label="状态" width="130">
+      <el-table-column label="状态" width="150">
         <template #default="{ row }">
           <el-tag :type="statusMap[row.status]?.type" size="small">{{ statusMap[row.status]?.text }}</el-tag>
+          <el-tooltip v-if="row.source === 'ASSIGN'"
+                      :content="assignTip(row)" placement="top">
+            <el-tag size="small" effect="plain" class="tag-assign">调度指派</el-tag>
+          </el-tooltip>
         </template>
       </el-table-column>
       <el-table-column label="操作" width="210">
@@ -156,4 +168,5 @@ async function cancel(row) {
 .h { font-size: 17px; font-weight: 700; color: #2f3f2f; }
 .h-sub { font-size: 12px; color: #909399; margin-left: 10px; }
 .dep { color: #e6a23c; font-weight: 700; }
+.tag-assign { margin-left: 6px; color: #9254de; border-color: #d3adf7; background: #f9f0ff; }
 </style>

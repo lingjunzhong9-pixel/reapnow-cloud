@@ -45,6 +45,21 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
             "/api/auth/register"
     );
 
+    /**
+     * 匿名可读的 GET 前缀（抢单大厅与发布页的公开数据）。
+     *
+     * 为什么 market-price 要放进来：
+     *   它只返回近 30 天成交单价的中位数/四分位，是聚合值，不含任何用户信息。
+     *   发布页和抢单大厅在未登录时就要展示定价锚点，若这里返回 401，
+     *   前端拦截器会把游客强制弹到登录页 —— 与「大厅免登录浏览」的设计冲突。
+     *
+     * 注意：/api/orders/by-demand/{id} **没有**放进来。
+     *   它返回订单快照（含农户手机号），属个人信息，必须登录后才能看。
+     */
+    private static final List<String> ANON_GET_PREFIX = List.of(
+            "/api/orders/market-price"
+    );
+
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         ServerHttpRequest request = exchange.getRequest();
@@ -52,6 +67,12 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
 
         // 白名单
         if (WHITE_LIST.contains(path)) {
+            return chain.filter(exchange);
+        }
+
+        // 匿名可读的 GET（行情聚合价）
+        if (HttpMethod.GET.equals(request.getMethod())
+                && ANON_GET_PREFIX.stream().anyMatch(path::startsWith)) {
             return chain.filter(exchange);
         }
 

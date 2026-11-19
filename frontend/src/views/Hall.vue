@@ -2,7 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import api from '../api'
+import api, { orderApi } from '../api'
 
 const router = useRouter()
 const loading = ref(false)
@@ -24,6 +24,14 @@ const stageMap = {
   OVERRIPE: { text: '过熟易落粒', type: 'danger' }
 }
 
+// 行情参考（机手端比价增强）：高于中位价 15% 打「高于行情」标签
+const market = ref(null)
+const marketThreshold = computed(() =>
+  market.value && market.value.median ? Number(market.value.median) * 1.15 : 0)
+function isHighPrice(d) {
+  return marketThreshold.value > 0 && Number(d.pricePerMu) >= marketThreshold.value
+}
+
 async function load() {
   loading.value = true
   try {
@@ -38,7 +46,13 @@ async function load() {
     loading.value = false
   }
 }
-onMounted(load)
+onMounted(() => {
+  load()
+  // 行情拉不到只影响「高于行情」标签，不影响列表。
+  // 这里刻意不传 region：机手在大厅看的是跨区域的活，比价基准用全平台中位价，
+  // 标签 tooltip 也写明了「全平台」，避免出现「本区行情」的名不副实。
+  orderApi.marketPrice().then((m) => { market.value = m }).catch(() => {})
+})
 
 function search() { page.value = 1; load() }
 
@@ -178,9 +192,12 @@ async function doGrab() {
       <el-card v-for="d in list" :key="d.id" class="demand" shadow="hover">
         <div class="d-head">
           <span class="plot">{{ d.plotName }}</span>
-          <el-tag :class="urgency(d).cls" size="small" effect="dark" style="border:none">
-            {{ urgency(d).text }}
-          </el-tag>
+          <div class="d-head-tags">
+            <el-tag v-if="d.urgent" class="u-urgent" size="small" effect="dark">临期加急</el-tag>
+            <el-tag :class="urgency(d).cls" size="small" effect="dark" style="border:none">
+              {{ urgency(d).text }}
+            </el-tag>
+          </div>
         </div>
         <div class="d-region">📍 {{ d.region }} · {{ d.farmerName }}</div>
 
@@ -198,6 +215,8 @@ async function doGrab() {
         <div class="d-tags">
           <el-tag size="small" :type="stageMap[d.cropStage]?.type">{{ stageMap[d.cropStage]?.text }}</el-tag>
           <el-tag v-if="d.lodged" size="small" type="danger" effect="plain">倒伏（可加价）</el-tag>
+          <el-tag v-if="isHighPrice(d)" size="small" class="t-high-price" effect="plain"
+                  title="该单价高于近 30 天全平台成交中位价 15% 以上">高于行情</el-tag>
         </div>
 
         <div class="d-foot-row">
@@ -367,6 +386,7 @@ async function doGrab() {
 }
 
 .d-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.d-head-tags { display: flex; gap: 6px; align-items: center; flex: none; }
 .plot {
   font-family: "KaiTi", "STKaiti", serif;
   font-size: 20px; font-weight: 700; color: #2b2318; letter-spacing: .5px;
@@ -439,6 +459,18 @@ async function doGrab() {
 :deep(.u-red) { background: #b04a30 !important; }
 :deep(.u-orange) { background: #c08a2a !important; }
 :deep(.u-green) { background: #6b8f4a !important; }
+
+/* 临期加急 / 高于行情标签 */
+:deep(.u-urgent) {
+  background: #a02c1d !important;
+  letter-spacing: .5px;
+}
+.t-high-price {
+  color: #8a6414 !important;
+  background: #f7ecd2 !important;
+  border-color: #e3cf9d !important;
+  font-weight: 600;
+}
 
 /* ---------------- 需求详情抽屉 ---------------- */
 .dt { min-height: 200px; }

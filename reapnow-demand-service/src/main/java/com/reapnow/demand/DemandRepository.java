@@ -7,9 +7,18 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 public interface DemandRepository extends JpaRepository<Demand, Long>,
         JpaSpecificationExecutor<Demand> {
+
+    /** 按状态查需求（巡检任务用） */
+    List<Demand> findByStatus(DemandStatus status);
+
+    /** 历史数据的 urgent 空值统一初始化为 false，保证排序与筛选口径一致 */
+    @Modifying
+    @Query("update Demand d set d.urgent = false where d.urgent is null")
+    int initUrgentNull();
 
     /**
      * 原子扣减剩余亩数 —— 本项目并发安全的核心。

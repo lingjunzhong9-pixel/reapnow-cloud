@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -22,6 +23,28 @@ public class OrderController {
                                           @Valid @RequestBody GrabRequest req) {
         UserVO me = userClient.verify(token).getData();
         return ApiResponse.ok(orderService.grab(me.id(), req));
+    }
+
+    /**
+     * C03-6 行情参考价（免登录）。
+     * 聚合近 30 天已成交订单单价，返回中位数与四分位：
+     * 发布表单给农户当定价锚点，抢单大厅给机手打「高于行情」标签。
+     */
+    @GetMapping("/market-price")
+    public ApiResponse<Map<String, Object>> marketPrice(
+            @RequestParam(required = false) String region) {
+        return ApiResponse.ok(orderService.marketPrice(region));
+    }
+
+    /**
+     * C03-7 调度员兜底指派。
+     * 需求临期无人抢时，调度员点名已认证机手接单 —— 与抢单共用扣减/建单/定金流程。
+     */
+    @PostMapping("/assign")
+    public ApiResponse<HarvestOrder> assign(@RequestHeader("X-Token") String token,
+                                            @Valid @RequestBody AssignRequest req) {
+        UserVO me = userClient.verify(token).getData();
+        return ApiResponse.ok(orderService.assign(me.id(), req));
     }
 
     @GetMapping("/mine")

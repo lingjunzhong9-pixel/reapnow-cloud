@@ -63,6 +63,9 @@ public class DemandService {
         d.setCropStage(req.cropStage());
         d.setDeadline(req.deadline());
         d.setLodged(Boolean.TRUE.equals(req.lodged()));
+        d.setUrgent(false);
+        d.setMarkupLimit(req.markupLimit() == null ? 0 : req.markupLimit());
+        d.setMarkupApplied(false);
         d.setRemark(req.remark());
         d.setStatus(DemandStatus.OPEN);
         d.setCreatedAt(LocalDateTime.now());
@@ -70,7 +73,7 @@ public class DemandService {
     }
 
     public Page<Demand> search(String status, String region, String keyword,
-                               String sort, int page, int size) {
+                               String sort, Boolean urgent, int page, int size) {
         Specification<Demand> spec = (root, query, cb) -> {
             List<Predicate> ps = new ArrayList<>();
             if (status != null && !status.isBlank()) {
@@ -78,6 +81,9 @@ public class DemandService {
                     ps.add(cb.equal(root.get("status"), DemandStatus.valueOf(status.toUpperCase())));
                 } catch (IllegalArgumentException ignored) {
                 }
+            }
+            if (urgent != null) {
+                ps.add(cb.equal(root.get("urgent"), urgent));
             }
             if (region != null && !region.isBlank()) {
                 ps.add(cb.like(root.get("region"), "%" + region + "%"));
@@ -93,11 +99,15 @@ public class DemandService {
             return cb.and(ps.toArray(new Predicate[0]));
         };
 
+        // 默认排序 = 兜底机制的曝光层：加急单排最前，其次看谁先到期，同日价高者优先
         Sort s = switch (sort == null ? "" : sort) {
             case "priceDesc" -> Sort.by("pricePerMu").descending();
             case "muDesc" -> Sort.by("mu").descending();
             case "newest" -> Sort.by("createdAt").descending();
-            default -> Sort.by("deadline").ascending().and(Sort.by("pricePerMu").descending());
+            default -> Sort.by(
+                    Sort.Order.desc("urgent"),
+                    Sort.Order.asc("deadline"),
+                    Sort.Order.desc("pricePerMu"));
         };
         return demandRepository.findAll(spec, PageRequest.of(Math.max(0, page - 1), size, s));
     }
