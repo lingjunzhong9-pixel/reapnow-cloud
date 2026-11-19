@@ -195,37 +195,37 @@ async function submit() {
         </el-col>
         <el-col :span="12">
           <el-form-item label="期望单价（元/亩，必填）">
-            <!-- 行情锚点：农户定价前先看到近 30 天成交区间 -->
-            <div v-if="marketReady" class="market-bar">
-              <div class="market-bar-scale">
-                <div class="seg seg-low"></div>
-                <div class="seg seg-mid"></div>
-                <div class="seg seg-high"></div>
-              </div>
-              <div class="market-bar-labels">
-                <span>低四分位 ¥{{ market.q1 }}</span>
-                <span class="mid">中位 ¥{{ market.median }}</span>
-                <span>高四分位 ¥{{ market.q3 }}</span>
-              </div>
-              <div class="market-bar-src">
-                <span v-if="marketLoading">正在获取{{ marketScope }}行情…</span>
-                <span v-else>
-                  {{ marketTitle }} · {{ market.sample }} 单成交
-                  <span v-if="marketFallback" class="fb">（本区成交样本不足，已用全平台行情参考）</span>
-                </span>
-              </div>
-            </div>
-            <div v-else-if="market" class="market-weak">
-              {{ marketScope }}近 30 天成交样本不足（{{ market.sample }} 单），暂无行情参考
-              <span v-if="!marketRegion" style="color:#b3a992">· 填写所在地区可看本区行情</span>
-            </div>
             <el-input-number v-model="form.pricePerMu" :min="1" :step="5" style="width:100%" />
-            <el-alert v-if="priceHint" :type="priceHint.type" :closable="false" class="price-hint">
-              {{ priceHint.text }}
-            </el-alert>
           </el-form-item>
         </el-col>
       </el-row>
+
+      <!-- 行情参考：整宽独立块。放在两个输入框下面，而不是塞进单价输入框里
+           —— 否则右列比左列高一截，两列永远对不齐 -->
+      <div v-if="marketReady" class="mk">
+        <div class="mk-head">
+          <span class="mk-title">近 30 天成交行情</span>
+          <span class="mk-src">{{ marketTitle }} · {{ market.sample }} 单成交</span>
+        </div>
+        <div class="mk-scale">
+          <div class="seg seg-low"></div>
+          <div class="seg seg-mid"></div>
+          <div class="seg seg-high"></div>
+        </div>
+        <div class="mk-labels">
+          <span>低四分位 <b>¥{{ market.q1 }}</b></span>
+          <span class="mid">中位 <b>¥{{ market.median }}</b></span>
+          <span>高四分位 <b>¥{{ market.q3 }}</b></span>
+        </div>
+        <div v-if="marketFallback" class="mk-fb">本区成交样本不足，已用全平台行情参考</div>
+        <div v-if="priceHint" class="mk-hint" :class="'hint-' + priceHint.type">
+          {{ priceHint.text }}
+        </div>
+      </div>
+      <div v-else-if="market" class="mk mk-weak">
+        {{ marketScope }}近 30 天成交样本不足（{{ market.sample }} 单），暂无行情参考
+        <span v-if="!marketRegion"> · 填写所在地区可看本区行情</span>
+      </div>
 
       <el-form-item label="麦子状态">
         <el-radio-group v-model="form.cropStage">
@@ -244,7 +244,9 @@ async function submit() {
             value-format="YYYY-MM-DD" style="width: 170px"
             @change="(v) => { form.deadline = v; selectedDay = null }" />
         </div>
-        <div class="dl">已选：{{ deadlineText }}</div>
+        <div class="dl" :class="{ 'is-empty': !form.deadline }">
+          {{ form.deadline ? '已选：' + deadlineText : '还没选，点上面任意一天' }}
+        </div>
       </el-form-item>
 
       <el-form-item>
@@ -257,52 +259,137 @@ async function submit() {
       </el-form-item>
 
       <el-form-item label="临期自动加价授权（选填）">
-        <div class="markup">
-          <el-slider v-model="form.markupLimit" :min="0" :max="20" :step="1"
-            show-stops :marks="{ 0: '不加价', 10: '+10%', 20: '+20%' }" />
-        </div>
-        <div class="markup-tip">
-          截止日当天仍无人接单时，系统按 <b>{{ form.markupLimit }}%</b> 幅度一次性上调单价并重新曝光（最多 20%）。
-          <span v-if="form.markupLimit === 0">当前不授权：宁可等，也不自动加价。</span>
+        <div class="mkup">
+          <!-- 不用 el-slider 自带的 marks：它是绝对定位的，下面不留空间，
+               会和说明文字叠在一起。改成自己排一行刻度 -->
+          <el-slider v-model="form.markupLimit" :min="0" :max="20" :step="1" />
+          <div class="mkup-scale">
+            <span>不加价</span>
+            <span class="cur" v-if="form.markupLimit > 0">+{{ form.markupLimit }}%</span>
+            <span>+20%</span>
+          </div>
+          <div class="mkup-tip">
+            <template v-if="form.markupLimit > 0">
+              截止前 <b>1 天</b>仍无人接单时，系统按 <b>{{ form.markupLimit }}%</b>
+              幅度上调一次单价并重新曝光（只加一次）。
+            </template>
+            <template v-else>
+              当前不授权：宁可等，也不自动加价。
+            </template>
+          </div>
         </div>
       </el-form-item>
 
-      <el-button type="primary" size="large" :loading="submitting" @click="submit">
-        发布需求
-      </el-button>
+      <div class="actions">
+        <el-button type="primary" size="large" :loading="submitting" @click="submit">
+          发布需求
+        </el-button>
+      </div>
     </el-form>
   </el-card>
 </template>
 
 <style scoped>
-.wrap { max-width: 820px; margin: 0 auto; }
+.wrap { max-width: 880px; margin: 0 auto; }
 .h { font-size: 17px; font-weight: 700; color: #2f3f2f; }
 .h-sub { font-size: 12px; color: #909399; margin-left: 10px; }
-.days { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-.dl { font-size: 12px; color: #e6a23c; margin-top: 6px; }
 
-/* ---------------- 行情锚点条 ---------------- */
-.market-bar { width: 100%; margin-bottom: 10px; }
-.market-bar-scale { display: flex; height: 7px; border-radius: 4px; overflow: hidden; }
-.market-bar-scale .seg { height: 100%; }
-.seg-low  { flex: 1; background: #e4b08a; }
-.seg-mid  { flex: 2; background: #9dbb7e; }
-.seg-high { flex: 1; background: #d9c47e; }
-.market-bar-labels {
+/* Element Plus 的 form-item content 默认是横向 flex，
+   多个子元素会被挤在同一行（日期按钮和「还没选」就挤在一起）。
+   这里统一改成纵向，子元素各占一行，表单才立得住 */
+:deep(.el-form-item__content) {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.days { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.dl { font-size: 12px; color: #b8862b; margin-top: 8px; }
+.dl.is-empty { color: #b3a992; }
+
+/* ---------------- 行情参考块 ---------------- */
+.mk {
+  background: linear-gradient(180deg, #fdf8ee, #fbf5e8);
+  border: 1px solid #efe4cd;
+  border-radius: 5px;
+  padding: 11px 14px 12px;
+  margin: -4px 0 20px;
+}
+.mk-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 10px; margin-bottom: 8px;
+}
+.mk-title { font-size: 12.5px; font-weight: 700; color: #6b5c44; letter-spacing: .5px; }
+.mk-src { font-size: 11px; color: #a89a80; }
+
+.mk-scale { display: flex; height: 8px; border-radius: 5px; overflow: hidden; }
+.mk-scale .seg { height: 100%; }
+.seg-low  { flex: 1; background: linear-gradient(90deg, #e7b992, #dfa87c); }
+.seg-mid  { flex: 2; background: linear-gradient(90deg, #a8c48a, #93b475); }
+.seg-high { flex: 1; background: linear-gradient(90deg, #ddca86, #d3bd6f); }
+
+.mk-labels {
   display: flex; justify-content: space-between;
-  font-size: 11px; color: #a89a80; margin-top: 4px;
+  font-size: 11.5px; color: #a89a80; margin-top: 6px;
 }
-.market-bar-labels .mid { color: #3f6b3f; font-weight: 600; }
-.market-bar-src { font-size: 11px; color: #b3a992; margin-top: 2px; }
-.market-bar-src .fb { color: #c08a2a; }
-.market-weak {
-  font-size: 12px; color: #a89a80; margin-bottom: 10px;
-  background: #fcf8ef; border: 1px solid #f0e7d4; border-radius: 4px; padding: 6px 10px;
+.mk-labels b { color: #5c5140; font-variant-numeric: tabular-nums; }
+.mk-labels .mid b { color: #3f6b3f; }
+
+.mk-fb { font-size: 11px; color: #c08a2a; margin-top: 5px; }
+
+.mk-hint {
+  font-size: 12px; line-height: 1.6; margin-top: 9px;
+  padding: 7px 10px; border-radius: 4px;
+  border-left: 3px solid #cbbf9f;
+  background: #fffdf7;
+  color: #6b5f4a;
 }
-.price-hint { margin-top: 10px; width: 100%; }
+.mk-hint.hint-warning { border-left-color: #c08a2a; background: #fdf6e8; color: #8a6420; }
+.mk-hint.hint-info    { border-left-color: #7f9fb8; background: #f4f8fb; color: #4a6b82; }
+.mk-hint.hint-success { border-left-color: #7ba36a; background: #f6faf2; color: #4a6b3d; }
+
+.mk-weak {
+  font-size: 12px; color: #a89a80;
+  background: #fcfaf4; border-style: dashed;
+}
 
 /* ---------------- 加价授权滑杆 ---------------- */
-.markup { width: 100%; padding: 0 6px; }
-.markup-tip { font-size: 12px; color: #a89a80; margin-top: 10px; line-height: 1.6; }
-.markup-tip b { color: #b8862b; font-variant-numeric: tabular-nums; }
+.mkup { width: 100%; }
+.mkup-scale {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 11px; color: #a89a80; margin-top: 2px; padding: 0 6px;
+}
+.mkup-scale .cur {
+  font-size: 12px; font-weight: 700; color: #b8862b;
+  font-variant-numeric: tabular-nums;
+}
+.mkup-tip { font-size: 12px; color: #a89a80; margin-top: 10px; line-height: 1.7; }
+.mkup-tip b { color: #b8862b; font-variant-numeric: tabular-nums; }
+
+/* ---------------- 提交区 ---------------- */
+.actions {
+  margin-top: 6px; padding-top: 16px;
+  border-top: 1px dashed #e8dfcd;
+}
+.actions .el-button { width: 100%; }
+
+/* 发布是全页唯一的主操作，用和大厅「我要抢这块地」同一枚麦金，
+   全站保持「金色 = 你现在要做的那件事」。
+   注意：App.vue 里有一条全局 .el-button--primary 规则（特异性 0,4,0），
+   scoped 的 :deep() 只有 0,2,0 压不住，所以这里必须 !important。 */
+.actions :deep(.el-button--primary) {
+  height: 44px;
+  background: linear-gradient(150deg, #f5d78c 0%, #d9a63c 52%, #bf8d2c 100%) !important;
+  border: none !important;
+  color: #241a0c !important;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  box-shadow: 0 3px 12px rgba(191, 141, 44, .3), inset 0 1px 0 rgba(255, 255, 255, .45);
+  transition: filter .16s ease, box-shadow .18s ease, transform .14s ease;
+}
+.actions :deep(.el-button--primary:hover) {
+  background: linear-gradient(150deg, #f9e0a0 0%, #e2b04b 52%, #c9962f 100%) !important;
+  box-shadow: 0 7px 20px rgba(191, 141, 44, .42), inset 0 1px 0 rgba(255, 255, 255, .5);
+  transform: translateY(-1px);
+}
 </style>
