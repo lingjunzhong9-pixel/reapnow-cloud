@@ -61,16 +61,23 @@ public class UrgentScanTask {
         long urgentDays = weather ? URGENT_DAYS_WEATHER : URGENT_DAYS;
 
         List<Demand> opens = demandRepository.findByStatus(DemandStatus.OPEN);
-        int marked = 0, bumped = 0;
+        int marked = 0, cleared = 0, bumped = 0;
 
         for (Demand d : opens) {
             boolean changed = false;
             long daysLeft = d.getDaysLeft();
 
-            // 1) 临期打标
-            if (!Boolean.TRUE.equals(d.getUrgent()) && daysLeft <= urgentDays) {
+            // 1) 临期打标：进窗口打标，出窗口撤标
+            //    必须双向 —— 原先只打不撤，天气预警解除（窗口 72h→48h）后，
+            //    之前按 72h 打上的标会一直挂着，3 天后到期的单还显示「临期加急」。
+            boolean shouldUrgent = daysLeft <= urgentDays;
+            if (shouldUrgent && !Boolean.TRUE.equals(d.getUrgent())) {
                 d.setUrgent(true);
                 marked++;
+                changed = true;
+            } else if (!shouldUrgent && Boolean.TRUE.equals(d.getUrgent())) {
+                d.setUrgent(false);
+                cleared++;
                 changed = true;
             }
 
@@ -95,10 +102,11 @@ public class UrgentScanTask {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("scanned", opens.size());
         result.put("urgentMarked", marked);
+        result.put("urgentCleared", cleared);
         result.put("priceBumped", bumped);
         result.put("weatherAlertOn", weather);
         result.put("urgentWindowHours", weather ? 72 : 48);
-        result.put("summary", "新标记加急 " + marked + " 单，授权加价 " + bumped + " 单"
+        result.put("summary", "新标记加急 " + marked + " 单，撤销加急 " + cleared + " 单，授权加价 " + bumped + " 单"
                 + (weather ? "（天气预警联动：72 小时窗口）" : ""));
         return result;
     }
